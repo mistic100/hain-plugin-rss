@@ -1,2 +1,5 @@
 # hain-plugin-rss
-RSS feed reader for Hain launcher
+
+[Hain](https://github.com/appetizermonster/hain) plugin that allows you to consult RSS feeds.
+
+**WORK IN PROGRESS**

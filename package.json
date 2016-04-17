@@ -1,0 +1,32 @@
+{
+  "name": "hain-plugin-rss",
+  "version": "0.0.1",
+  "description": "RSS feed reader for Hain launcher",
+  "author": {
+    "name": "Damien \"Mistic\" Sorel",
+    "email": "contact@git.strangeplanet.fr",
+    "url": "http://www.strangeplanet.fr"
+  },
+  "keywords": [
+    "hain-0.1.0"
+  ],
+  "dependencies": {
+    "feedparser": "^1.1.4",
+    "lodash": "^4.11.1"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/mistic100/hain-plugin-rss",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/mistic100/hain-plugin-rss.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mistic100/hain-plugin-rss/issues"
+  },
+  "hain": {
+    "prefix": "/rss",
+    "usage": "Type /rss to view feeds. Set sources in preferences.",
+    "icon": "#fa fa-rss",
+    "redirect": "/rss list"
+  }
+}
