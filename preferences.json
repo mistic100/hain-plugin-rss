@@ -1,6 +1,18 @@
 {
   "type": "object",
   "properties": {
+    "refreshDelay": {
+      "type": "integer",
+      "title": "Automatic refresh delay (minutes)",
+      "default": 10,
+      "minimum": 1
+    },
+    "itemsLimit": {
+      "type": "integer",
+      "title": "Maximum number of items for each feed",
+      "default": 20,
+      "minimum": 1
+    },
     "sources": {
       "type": "array",
       "title": "RSS feeds",

@@ -1,59 +1,64 @@
 'use strict';
 
-const FeedParser = require('feedparser');
-const http = require('http');
 const _ = require('lodash');
+const feedFetcher = require('./feedFetcher');
 
 module.exports = (pluginContext) => {
+    const app = pluginContext.app;
     const toast = pluginContext.toast;
     const logger = pluginContext.logger;
     const preferences = pluginContext.preferences;
     const shell = pluginContext.shell;
 
     var feeds = {};
+    var refreshInterval;
 
     /**
      * Init plugin
      */
     function startup() {
-        preferences.get('sources').forEach(source => {
-            var parser = new FeedParser({
-                feedurl: source,
-                addmeta: false
-            });
+        refresh();
+        startAutoRefresh();
 
-            http.get(source, function(res) {
-                if (res.statusCode === 200) {
-                    res.pipe(parser);
-                }
-            });
-
-            feeds[source] = {
-                ok: false,
-                link: null,
-                title: null,
-                description: null,
-                image: null,
-                items: []
-            };
-
-            var feed = feeds[source];
-
-            parser.on('readable', function() {
-                var item;
-
-                if (this.meta && !feed.ok) {
-                    feed.ok = true;
-                    feed.link = this.meta.link;
-                    feed.title = this.meta.description;
-                    feed.image = _.get(this.meta, 'image.url');
-                }
-
-                while (item = this.read()) {
-                    feed.items.push(_.pick(item, ['title', 'link', 'author', 'pubDate']));
-                }
-            });
+        preferences.on('update', function() {
+            refresh();
+            startAutoRefresh();
         });
+    }
+
+    /**
+     * Start auto refresh
+     */
+    function startAutoRefresh() {
+        if (refreshInterval) {
+            clearInterval(refreshInterval);
+        }
+
+        refreshInterval = setInterval(refresh, preferences.get('refreshDelay') * 60000);
+    }
+
+    /**
+     * Refresh feeds
+     */
+    function refresh() {
+        var itemsLimit = preferences.get('itemsLimit');
+
+        feedFetcher.fetchAll(preferences.get('sources'))
+            .then(data => {
+                feeds = _(data)
+                    .filter(feed => {
+                        if (feed.error) {
+                            toast.enqueue(feed.error);
+                            return false;
+                        }
+                        else {
+                            feed.items = feed.items.slice(0, itemsLimit);
+                            return true;
+                        }
+                    })
+                    .keyBy('url')
+                    .value();
+            });
     }
 
     /**
@@ -66,9 +71,9 @@ module.exports = (pluginContext) => {
 
         if (preferences.get('sources').length === 0) {
             res.add({
+                id: 'preferences',
                 title: 'No RSS feeds',
-                desc: 'Open Hain preferences to add RSS sources',
-                redirect: '/preferences'
+                desc: 'Open Hain preferences to add RSS sources'
             });
 
             return;
@@ -91,6 +96,7 @@ module.exports = (pluginContext) => {
             res.add({
                 id: 'view',
                 title: feed.title,
+                desc: feed.description,
                 redirect: `/rss ${source}`,
                 icon: feed.image || '#fa fa-rss',
                 group: 'RSS feeds'
@@ -109,10 +115,12 @@ module.exports = (pluginContext) => {
         _.forEach(feed.items, item => {
             res.add({
                 id: 'open',
-                payload: item.link,
+                payload: item,
                 title: item.title,
+                desc: item.link,
                 icon: feed.image || '#fa fa-rss',
-                group: feed.title
+                group: feed.title,
+                preview: true
             });
         });
     }
@@ -128,10 +136,21 @@ module.exports = (pluginContext) => {
              * Open item
              */
             case 'open':
-                shell.openExternal(payload);
+                shell.openExternal(payload.link);
+                break;
+
+            /**
+             * Open preferences
+             */
+            case 'preferences':
+                app.openPreferences();
                 break;
         }
     }
 
-    return { startup, search, execute };
+    function renderPreview(id, payload, render) {
+        render(`<html><body>${payload.description}</body></html>`);
+    }
+
+    return { startup, search, execute, renderPreview };
 };

@@ -12,7 +12,8 @@
   ],
   "dependencies": {
     "feedparser": "^1.1.4",
-    "lodash": "^4.11.1"
+    "lodash": "^4.11.1",
+    "promise": "^7.1.1"
   },
   "license": "MIT",
   "homepage": "https://github.com/mistic100/hain-plugin-rss",
