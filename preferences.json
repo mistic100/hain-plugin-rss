@@ -13,6 +13,12 @@
       "default": 20,
       "minimum": 1
     },
+    "feedsOrder": {
+      "title": "Feeds order",
+      "type": "string",
+      "enum": ["name", "date"],
+      "default": "date"
+    },
     "sources": {
       "type": "array",
       "title": "RSS feeds",

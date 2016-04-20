@@ -28,6 +28,6 @@
     "prefix": "/rss",
     "usage": "Type /rss to view feeds. Set sources in preferences.",
     "icon": "#fa fa-rss",
-    "redirect": "/rss list"
+    "redirect": "/rss"
   }
 }
