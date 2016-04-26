@@ -28,7 +28,7 @@ module.exports = (logger) => {
                 }
             ));
 
-            req.on('response', function(res) {
+            req.on('response', res => {
                 if (res.statusCode === 200) {
                     logger.log(`DEBUG: Fetched ${feedUrl}. Pipe to parser.`);
                     res.pipe(parser);
@@ -41,9 +41,9 @@ module.exports = (logger) => {
                 }
             });
 
-            req.on('error', function(e) {
-                logger.log(`ERROR: HTTP error ${e.message} while fetching ${feedUrl}`);
-                reject(e);
+            req.on('error', error => {
+                logger.log(`ERROR: HTTP error ${error.message} while fetching ${feedUrl}`);
+                reject(error);
             });
 
             req.end();
@@ -71,9 +71,9 @@ module.exports = (logger) => {
                 });
             });
 
-            parser.on('error', function(e) {
-                logger.log(`ERROR: Parser error ${e.message} while fetching ${feedUrl}`);
-                reject(e);
+            parser.on('error', error => {
+                logger.log(`ERROR: Parser error ${error.message} while fetching ${feedUrl}`);
+                reject(error);
             });
         });
     }

@@ -2,6 +2,7 @@
 
 const _ = require('lodash');
 const FeedFetcher = require('./feedFetcher');
+const templates = require('./templates');
 
 module.exports = (pluginContext) => {
     const app = pluginContext.app;
@@ -19,7 +20,7 @@ module.exports = (pluginContext) => {
      * Init plugin
      */
     function startup() {
-        refresh();
+        setTimeout(refresh, 500);
         startAutoRefresh();
 
         preferences.on('update', function() {
@@ -43,8 +44,8 @@ module.exports = (pluginContext) => {
      * Refresh feeds
      */
     function refresh() {
-        var itemsLimit = preferences.get('itemsLimit');
-        var feedsOrder = preferences.get('feedsOrder');
+        const itemsLimit = preferences.get('itemsLimit');
+        const feedsOrder = preferences.get('feedsOrder');
 
         return fetcher.fetchAll(preferences.get('sources'))
             .then(data => {
@@ -66,7 +67,7 @@ module.exports = (pluginContext) => {
                         feed.maxDate = _.maxBy(feed.items, 'pubDate');
                         return feed;
                     })
-                    .sortBy(function(feed) {
+                    .sortBy(feed => {
                         switch (feedsOrder) {
                             case 'name':
                                 return feed.title;
@@ -98,16 +99,17 @@ module.exports = (pluginContext) => {
             return;
         }
 
-        res.add({
-            title: 'Refresh feeds',
-            payload: {
-                action: 'refresh'
-            }
-        });
-
         var feed;
 
         if (!query) {
+            res.add({
+                title: 'Refresh feeds',
+                payload: {
+                    action: 'refresh'
+                },
+                icon: '#fa fa-refresh'
+            });
+
             list(res);
         }
         else if ((feed = _.find(feeds, { url: query })) !== undefined) {
@@ -132,11 +134,11 @@ module.exports = (pluginContext) => {
     function list(res) {
         _.forEach(feeds, feed => {
             res.add({
-                id: feed.guid,
-                title: feed.title + (feed.error ? ' <span style="color: red">[ERROR]</span>' : ''),
-                desc: feed.error || feed.description,
+                id: feed.url,
                 redirect: `/rss ${feed.url}`,
-                icon: feed.error ? '#fa fa-exclamation' : (feed.image || '#fa fa-rss'),
+                title: templates.feedTitle(feed),
+                desc: templates.feedDescription(feed),
+                icon: templates.feedIcon(feed),
                 group: 'RSS feeds'
             });
         });
@@ -148,19 +150,22 @@ module.exports = (pluginContext) => {
      * @param feed
      */
     function view(res, feed) {
+        const enablePreview = preferences.get('enablePreview');
+
         if (!feed.error) {
             _.forEach(feed.items, item => {
                 res.add({
-                    id: item.link,
+                    id: item.guid,
                     payload: {
                         action: 'open',
-                        item: item
+                        item: item,
+                        feed: feed
                     },
-                    title: item.title,
-                    desc: item.link,
-                    icon: feed.image || '#fa fa-rss',
+                    title: templates.itemTitle(item, feed),
+                    desc: templates.itemDescription(item, feed),
+                    icon: templates.itemIcon(item, feed),
                     group: feed.title,
-                    preview: true
+                    preview: enablePreview
                 });
             });
         }
@@ -193,6 +198,7 @@ module.exports = (pluginContext) => {
             case 'refresh':
                 toast.enqueue('Refresh feeds...');
                 refresh().then(function() {
+                    toast.enqueue('All feeds refreshed');
                     app.setInput('/rss');
                 });
                 break;
@@ -200,7 +206,7 @@ module.exports = (pluginContext) => {
     }
 
     /**
-     * Render item preview
+     * Render item itemContent
      * @param id
      * @param payload
      * @param render
@@ -208,19 +214,7 @@ module.exports = (pluginContext) => {
     function renderPreview(id, payload, render) {
         switch (payload.action) {
             case 'open':
-                render(`<html>
-                    <head>
-                        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300italic,700,700italic">
-                        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/3.0.3/normalize.min.css">
-                        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.1.0/milligram.min.css">
-                        <style>
-                            body { overflow-x: hidden; font-size: 14px; }
-                        </style>
-                    </head>
-                    <body>
-                        ${payload.item.description}
-                    </body>
-                </html>`);
+                render(templates.itemContent(payload.item, payload.feed));
                 break;
         }
     }
