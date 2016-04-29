@@ -10,17 +10,19 @@ module.exports = (pluginContext) => {
     const logger = pluginContext.logger;
     const preferences = pluginContext.preferences;
     const shell = pluginContext.shell;
+    const storage = pluginContext.localStorage;
 
     const fetcher = FeedFetcher(logger);
 
-    var feeds = {};
+    var feeds = [];
+    var itemsRead = storage.getItem('itemsRead') || {};
     var refreshInterval;
 
     /**
      * Init plugin
      */
     function startup() {
-        setTimeout(refresh, 500);
+        refresh();
         startAutoRefresh();
 
         preferences.on('update', function() {
@@ -51,6 +53,7 @@ module.exports = (pluginContext) => {
             .then(data => {
                 feeds = _(data)
                     .map(feed => {
+                        feed.nbUnread = 0;
                         feed.items = _(feed.items)
                             .slice(0, itemsLimit)
                             .map(item => {
@@ -60,17 +63,25 @@ module.exports = (pluginContext) => {
                                 catch (e) {
                                     item.pubDate = new Date();
                                 }
+
+                                item.read = itemsRead.hasOwnProperty(item.guid);
+                                if (!item.read) {
+                                    feed.nbUnread++;
+                                }
+
                                 return item;
                             })
                             .value();
 
                         feed.maxDate = _.maxBy(feed.items, 'pubDate');
+
                         return feed;
                     })
                     .sortBy(feed => {
                         switch (feedsOrder) {
                             case 'name':
                                 return feed.title;
+
                             case 'date':
                                 return feed.maxDate;
                         }
@@ -159,7 +170,7 @@ module.exports = (pluginContext) => {
                     payload: {
                         action: 'open',
                         item: item,
-                        feed: feed
+                        feed: _.omit(feed, 'items')
                     },
                     title: templates.itemTitle(item, feed),
                     desc: templates.itemDescription(item, feed),
@@ -173,6 +184,7 @@ module.exports = (pluginContext) => {
 
     /**
      * Execute payload
+     * /!\ payload is a clone
      * @param id
      * @param payload
      */
@@ -182,6 +194,7 @@ module.exports = (pluginContext) => {
              * Open item
              */
             case 'open':
+                markItemAsRead(payload.feed.url, payload.item.guid);
                 shell.openExternal(payload.item.link);
                 break;
 
@@ -203,6 +216,22 @@ module.exports = (pluginContext) => {
                 });
                 break;
         }
+    }
+
+    /**
+     * Mark an item as read and save in local-storage
+     * @param feedUrl
+     * @param itemGuid
+     */
+    function markItemAsRead(feedUrl, itemGuid) {
+        var feed = _.find(feeds, { url: feedUrl });
+        var item = _.find(feed.items, { guid: itemGuid });
+
+        item.read = true;
+        feed.nbUnread = _.filter(feed.items, { read: false }).length;
+
+        itemsRead[item.guid] = true;
+        storage.setItem('itemsRead', itemsRead);
     }
 
     /**

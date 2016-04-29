@@ -8,13 +8,22 @@ const moment = require('moment');
  * @returns {string}
  */
 function feedTitle(feed) {
-    var result = feed.title;
-
-    if (feed.error) {
-        result += ' <span style="color: red">[ERROR]</span>';
-    }
-
-    return result;
+    return `${feed.title}
+        ${feed.error ? `<span style="color: #B00;">[ERROR]</span>` : ``}
+        ${feed.nbUnread > 0 ? `<span style="position: absolute;
+                                            top: 10px;
+                                            left: 10px;
+                                            color: #fff;
+                                            font-size: 12px;
+                                            background: #FF7534;
+                                            width: 20px;
+                                            height: 20px;
+                                            border-radius: 50%;
+                                            display: flex;
+                                            justify-content: center;
+                                            align-items: center;"
+            >${feed.nbUnread}</span>` : ``}
+    `;
 }
 
 /**
@@ -54,7 +63,9 @@ function itemTitle(item, feed) {
  * @returns {string}
  */
 function itemDescription(item, feed) {
-    return item.link;
+    return `${item.link}
+        ${item.read ? `<span class="fa fa-check" style="float: right; font-size: 18px; color: #13AD67;"></span>` : ``}
+    `;
 }
 
 /**
@@ -79,14 +90,14 @@ function itemContent(item, feed) {
             <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300italic,700,700italic">
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/3.0.3/normalize.min.css">
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.1.0/milligram.min.css">
-            <style>
-                body { overflow-x: hidden; font-size: 14px; }
-            </style>
         </head>
-        <body>
+        <body style="overflow-x: hidden; font-size: 14px;">
             ${item.description}
         </body>
     </html>`;
 }
 
-module.exports = { feedTitle, feedDescription, feedIcon, itemTitle, itemDescription, itemIcon, itemContent };
+module.exports = {
+    feedTitle, feedDescription, feedIcon,
+    itemTitle, itemDescription, itemIcon, itemContent
+};

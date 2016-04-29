@@ -1,7 +1,6 @@
 'use strict';
 
-const http = require('http');
-const url = require('url');
+const got = require('got');
 const Promise = require('promise');
 const FeedParser = require('feedparser');
 const _ = require('lodash');
@@ -17,36 +16,19 @@ module.exports = (logger) => {
                 addmeta: false
             });
 
-            // HTTP request
-            var req = http.request(_.extend(
-                url.parse(feedUrl), {
-                    method: 'GET',
-                    header: {
-                        'user-agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:45.0) Gecko/20100101 Firefox/45.0',
-                        'accept': 'text/html,application/xhtml+xml'
-                    }
-                }
-            ));
-
-            req.on('response', res => {
-                if (res.statusCode === 200) {
-                    logger.log(`DEBUG: Fetched ${feedUrl}. Pipe to parser.`);
-                    res.pipe(parser);
-                }
-                else {
-                    logger.log(`ERROR: HTTP error ${res.statusCode} while fetching ${feedUrl}`);
-                    reject({
-                        message: `HTTP error ${res.statusCode}`
-                    });
+            var req = got.stream(feedUrl, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:45.0) Gecko/20100101 Firefox/45.0',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml'
                 }
             });
+
+            req.pipe(parser);
 
             req.on('error', error => {
                 logger.log(`ERROR: HTTP error ${error.message} while fetching ${feedUrl}`);
                 reject(error);
             });
-
-            req.end();
 
             // Parse feed
             var items = [];
