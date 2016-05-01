@@ -1,6 +1,6 @@
 {
   "name": "hain-plugin-rss",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "RSS feed reader for Hain launcher",
   "author": {
     "name": "Damien \"Mistic\" Sorel",
@@ -8,7 +8,7 @@
     "url": "http://www.strangeplanet.fr"
   },
   "keywords": [
-    "hain-0.1.0"
+    "hain-0.3.0"
   ],
   "dependencies": {
     "feedparser": "^1.1.4",

@@ -16,7 +16,9 @@ module.exports = (pluginContext) => {
 
     var feeds = [];
     var itemsRead = storage.getItem('itemsRead') || {};
+    var lastAccess = storage.getItem('lastAccess') || {};
     var refreshInterval;
+    var isRefreshing = false;
 
     /**
      * Init plugin
@@ -47,7 +49,8 @@ module.exports = (pluginContext) => {
      */
     function refresh() {
         const itemsLimit = preferences.get('itemsLimit');
-        const feedsOrder = preferences.get('feedsOrder');
+
+        isRefreshing = true;
 
         return fetcher.fetchAll(preferences.get('sources'))
             .then(data => {
@@ -73,20 +76,14 @@ module.exports = (pluginContext) => {
                             })
                             .value();
 
+                        feed.lastAccess = lastAccess[feed.url] ? new Date(lastAccess[feed.url]) : new Date();
                         feed.maxDate = _.maxBy(feed.items, 'pubDate');
 
                         return feed;
                     })
-                    .sortBy(feed => {
-                        switch (feedsOrder) {
-                            case 'name':
-                                return feed.title;
-
-                            case 'date':
-                                return feed.maxDate;
-                        }
-                    })
                     .value();
+
+                isRefreshing = false;
             });
     }
 
@@ -113,15 +110,23 @@ module.exports = (pluginContext) => {
         var feed;
 
         if (!query) {
-            res.add({
-                title: 'Refresh feeds',
-                payload: {
-                    action: 'refresh'
-                },
-                icon: '#fa fa-refresh'
-            });
+            if (feeds.length === 0 && isRefreshing) {
+                res.add({
+                    title: 'The feeds are currently fetched, please wait',
+                    redirect: '/rss'
+                });
+            }
+            else {
+                res.add({
+                    title: 'Refresh feeds',
+                    payload: {
+                        action: 'refresh'
+                    },
+                    icon: '#fa fa-refresh'
+                });
 
-            list(res);
+                list(res);
+            }
         }
         else if ((feed = _.find(feeds, { url: query })) !== undefined) {
             view(res, feed)
@@ -143,16 +148,32 @@ module.exports = (pluginContext) => {
      * @param res
      */
     function list(res) {
-        _.forEach(feeds, feed => {
-            res.add({
-                id: feed.url,
-                redirect: `/rss ${feed.url}`,
-                title: templates.feedTitle(feed),
-                desc: templates.feedDescription(feed),
-                icon: templates.feedIcon(feed),
-                group: 'RSS feeds'
-            });
-        });
+        const feedsOrder = preferences.get('feedsOrder');
+
+        _(feeds)
+            .sortBy(feed => {
+                switch (feedsOrder) {
+                    case 'name':
+                        return feed.title;
+
+                    case 'date':
+                        return -feed.maxDate.getTime();
+
+                    case 'unread':
+                        return -feed.nbUnread;
+                }
+            })
+            .map(feed => {
+                res.add({
+                    id: feed.url,
+                    redirect: `/rss ${feed.url}`,
+                    title: templates.feedTitle(feed),
+                    desc: templates.feedDescription(feed),
+                    icon: templates.feedIcon(feed),
+                    group: 'RSS feeds'
+                });
+            })
+            .value();
     }
 
     /**
@@ -164,6 +185,8 @@ module.exports = (pluginContext) => {
         const enablePreview = preferences.get('enablePreview');
 
         if (!feed.error) {
+            setLastAccess(feed.url);
+
             _.forEach(feed.items, item => {
                 res.add({
                     id: item.guid,
@@ -196,13 +219,19 @@ module.exports = (pluginContext) => {
             case 'open':
                 markItemAsRead(payload.feed.url, payload.item.guid);
                 shell.openExternal(payload.item.link);
+
+                if (preferences.get('keepOpen')) {
+                    setTimeout(function() {
+                        app.open(`/rss ${payload.feed.url}`);
+                    }, 100);
+                }
                 break;
 
             /**
              * Open preferences
              */
             case 'preferences':
-                app.openPreferences();
+                app.openPreferences('hain-plugin-rss');
                 break;
 
             /**
@@ -232,6 +261,19 @@ module.exports = (pluginContext) => {
 
         itemsRead[item.guid] = true;
         storage.setItem('itemsRead', itemsRead);
+    }
+
+    /**
+     * Set the last access of a feed to now
+     * @param feedUrl
+     */
+    function setLastAccess(feedUrl) {
+        var feed = _.find(feeds, { url: feedUrl });
+
+        feed.lastAccess = new Date()
+
+        lastAccess[feed.url] = feed.lastAccess.toISOString();
+        storage.setItem('lastAccess', lastAccess);
     }
 
     /**
