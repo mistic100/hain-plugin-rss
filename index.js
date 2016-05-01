@@ -77,7 +77,7 @@ module.exports = (pluginContext) => {
                             .value();
 
                         feed.lastAccess = lastAccess[feed.url] ? new Date(lastAccess[feed.url]) : new Date();
-                        feed.maxDate = _.maxBy(feed.items, 'pubDate');
+                        feed.maxDate = _.maxBy(feed.items, 'pubDate').pubDate;
 
                         return feed;
                     })
